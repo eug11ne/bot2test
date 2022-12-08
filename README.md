@@ -7,7 +7,7 @@ Python3 должен быть уже установлен.
 ```
 pip install -r requirements.txt
 ```
-Для работы создайте Telegram бота и получить его токен у [Отца Ботов](https://telegram.me/BotFather). 
+Для работы создайте Telegram бота и получить его токен у [Отца Ботов](https://telegram.me/BotFather).<br/> 
 Полученный ключ необходимо прописать в файле .env, как показано ниже.
 ```
 TELEGRAM_TOKEN=токен_бота
