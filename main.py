@@ -154,11 +154,14 @@ def register_client(update: Update, context: CallbackContext) -> None:
     query.edit_message_text(text="Нам нужно ваше согласие на обработку персональных данных:", reply_markup=reply_markup)
     return ENTER_CONTACT_INFO
 
+
 def enter_contact_info(update, context: CallbackContext) -> None:
     phone = update.message.text
     update.message.reply_text(phone)
     reply_markup = create_keyboard(['Оплатить'])
     update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
+    return ConversationHandler.END
+
 
 
 def choose_contact_info(update, context: CallbackContext) -> None:
@@ -180,7 +183,6 @@ def choose_service_first(update: Update, context: CallbackContext) -> None:
         'Парафиновые ванны',
         'Массажная программа'
                 ]
-
 
     reply_markup = create_keyboard(services)
     print(context.user_data)
