@@ -10,7 +10,7 @@ def start(update: Update, context: CallbackContext) -> None:
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
 
-    update.message.reply_text('Что вы хотели бы сделать:',
+    update.message.reply_text('Здравствуйте! Что вы хотели бы сделать?',
                               reply_markup=reply_markup)
     return MAIN_MENU
 
@@ -25,7 +25,7 @@ def main_menu(update: Update, context: CallbackContext) -> None:
     query.answer()
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
-    query.edit_message_text(text         = 'Что вы хотели бы сделать',
+    query.edit_message_text(text         = 'Здравствуйте! Что вы хотели бы сделать?',
                             reply_markup = reply_markup)
     return MAIN_MENU
 
