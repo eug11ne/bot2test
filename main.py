@@ -124,7 +124,7 @@ def choose_date(update: Update, context: CallbackContext) -> None:
 
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Выберите дату:")
+    query.edit_message_text(text="Введите подходящую дату:")
 
 
 def enter_date(update, context: CallbackContext) -> None:
@@ -138,7 +138,7 @@ def enter_date(update, context: CallbackContext) -> None:
                ]
 
     reply_markup = create_keyboard(masters)
-    update.message.reply_text("Bыберите время:", reply_markup=reply_markup)
+    update.message.reply_text("Bыберите удобное время:", reply_markup=reply_markup)
     return REGISTER
 
 
