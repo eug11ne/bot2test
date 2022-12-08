@@ -31,7 +31,7 @@ def main_menu(update: Update, context: CallbackContext) -> None:
 
 
 def main_submenu(update: Update, context: CallbackContext) -> None:
-    context.user_data.update({'choose_service_first': False, 'choose_master_first': False})
+    context.user_data.update({'choose_service_first': False, 'choose_master_first': False, 'reorder': False})
 
     next_steps = ['Выбрать салон', 'Выбрать услугу', 'Выбрать мастера']
 
@@ -55,10 +55,12 @@ def client_area(update: Update, context: CallbackContext) -> None:
 
 def choose_order(update: Update, context: CallbackContext) -> None:
     reorder = ['Заказать снова']
+    context.user_data.update({'reorder': True})
     reply_markup = create_keyboard(reorder)
     query = update.callback_query
     query.answer()
     query.edit_message_text(text="Вы заказывали массаж в Салоне на Павелецкой у мастера Ивановой:", reply_markup=reply_markup)
+    return ENTER_DATE
 
 
 
@@ -140,7 +142,10 @@ def enter_date(update, context: CallbackContext) -> None:
 
     reply_markup = create_keyboard(masters)
     update.message.reply_text("Bыберите удобное время:", reply_markup=reply_markup)
-    return REGISTER
+    if context.user_data['reorder']:
+        return PAY
+    else:
+        return REGISTER
 
 
 def register_client(update: Update, context: CallbackContext) -> None:
@@ -254,7 +259,7 @@ def main() -> None:
             ENTER_CONTACT_INFO: [CallbackQueryHandler(choose_contact_info, pattern='\d+'), MessageHandler(Filters.text, enter_phone)],
             NAME: [MessageHandler(Filters.text, enter_name)],
             ORDERS: [CallbackQueryHandler(choose_order, pattern='\d+')],
-            PAY: [CallbackQueryHandler(process_payment, pattern='0')]
+            PAY: [CallbackQueryHandler(process_payment, pattern='\d+')]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
