@@ -6,7 +6,7 @@ MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER,
 
 
 def start(update: Update, context: CallbackContext) -> None:
-    """Sends a message with three inline buttons attached."""
+
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
 
@@ -19,8 +19,6 @@ def cancel(update: Update, context: CallbackContext) -> None:
 
 
 def main_menu(update: Update, context: CallbackContext) -> None:
-    """ Displays the main menu keyboard when called. """
-
 
     query = update.callback_query
     query.answer()
