@@ -2,7 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
 
 
-MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, ORDERS = range(10)
+MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(12)
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -15,6 +15,7 @@ def start(update: Update, context: CallbackContext) -> None:
     return MAIN_MENU
 
 def cancel(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Попробуйте снова с помощью команды /start")
     return ConversationHandler.END
 
 
@@ -111,7 +112,6 @@ def choose_master(update: Update, context: CallbackContext) -> None:
     'Цветкова',
     'Капустина']
 
-
     reply_markup = create_keyboard(masters)
     print(context.user_data)
 
@@ -129,6 +129,7 @@ def choose_date(update: Update, context: CallbackContext) -> None:
 
 def enter_date(update, context: CallbackContext) -> None:
     date = update.message.text
+    context.user_data.update({'date': date})
     update.message.reply_text(date)
     masters = ['10:00 - 11:00',
                '11:00 - 12:00',
@@ -155,11 +156,25 @@ def register_client(update: Update, context: CallbackContext) -> None:
     return ENTER_CONTACT_INFO
 
 
-def enter_contact_info(update, context: CallbackContext) -> None:
+def enter_phone(update, context: CallbackContext) -> None:
     phone = update.message.text
+    context.user_data.update({'phone': phone})
     update.message.reply_text(phone)
+    #reply_markup = create_keyboard(['Оплатить'])
+    update.message.reply_text("Введите ваше имя:")
+    return NAME
+
+def enter_name(update, context: CallbackContext) -> None:
+    name = update.message.text
+    context.user_data.update({'name': name})
+    update.message.reply_text(f"{name}, номер телефона: {context.user_data['phone']}")
     reply_markup = create_keyboard(['Оплатить'])
     update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
+    return PAY
+
+def process_payment(update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.edit_message_text(text="Для оплаты перейдите по ссылке. Скоро она здесь появится")
     return ConversationHandler.END
 
 
@@ -236,8 +251,10 @@ def main() -> None:
             MASTER: [CallbackQueryHandler(choose_master, pattern='\d+')],
             ENTER_DATE: [CallbackQueryHandler(choose_date, pattern='\d+'), MessageHandler(Filters.text, enter_date)],
             REGISTER: [CallbackQueryHandler(register_client, pattern='\d+')],
-            ENTER_CONTACT_INFO: [CallbackQueryHandler(choose_contact_info, pattern='\d+'), MessageHandler(Filters.text, enter_contact_info)],
+            ENTER_CONTACT_INFO: [CallbackQueryHandler(choose_contact_info, pattern='\d+'), MessageHandler(Filters.text, enter_phone)],
+            NAME: [MessageHandler(Filters.text, enter_name)],
             ORDERS: [CallbackQueryHandler(choose_order, pattern='\d+')],
+            PAY: [CallbackQueryHandler(process_payment, pattern='0')]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
