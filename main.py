@@ -126,11 +126,8 @@ def choose_salon(update: Update, context: CallbackContext) -> None:
         for s in salons:
             coords = get_salon_coordinates(context.user_data['config'], s)
             distance += [geodesic(coords, context.user_data['location']).m]
-            print(distance)
         min_index = np.argmin(distance)
         addon_message = f'Ближе всего к вам - {salons[min_index]}.'
-
-
 
     query = update.callback_query
     query.answer()
@@ -230,14 +227,14 @@ def register_client(update: Update, context: CallbackContext) -> None:
     reply_markup = create_keyboard(registration)
     chat_id = update.effective_chat.id
     document = open('Agreement.pdf', 'rb')
-    pdf_message = context.bot.send_document(chat_id, document, caption='Рекомендуем ознакомиться с соглашением об обработке персональных данных')
-    print("message id", pdf_message.message_id)
-    context.user_data.update({'pdf_message_id': pdf_message.message_id})
+    #pdf_message = context.bot.send_document(chat_id, document, caption='Рекомендуем ознакомиться с соглашением об обработке персональных данных')
+    #print("message id", pdf_message.message_id)
+    #context.user_data.update({'pdf_message_id': pdf_message.message_id})
     query = update.callback_query
     query.answer()
     chosen_slot = context.user_data['slots'][int(query.data)]
     context.user_data.update({'slot': chosen_slot})
-    query.edit_message_text(text="Нам нужно ваше согласие на обработку персональных данных:", reply_markup=reply_markup)
+    query.edit_message_text(text="Нам нужно ваше согласие на обработку персональных данных. Ознакомьтесь с нашей Политикой Конфиденциальности: https://dvmn.org/policy/", reply_markup=reply_markup)
 
     return ENTER_CONTACT_INFO
 
@@ -275,7 +272,7 @@ def process_payment(update, context: CallbackContext) -> None:
 
 
 def choose_contact_info(update, context: CallbackContext) -> None:
-    context.bot.delete_message(update.effective_chat.id, context.user_data['pdf_message_id'])
+    #context.bot.delete_message(update.effective_chat.id, context.user_data['pdf_message_id'])
     query = update.callback_query
     keyboard = [[KeyboardButton('Поделиться телефоном', request_contact=True)]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
