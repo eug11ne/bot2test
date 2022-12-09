@@ -165,13 +165,20 @@ def register_client(update: Update, context: CallbackContext) -> None:
                     ]
 
     reply_markup = create_keyboard(registration)
+    chat_id = update.effective_chat.id
+    document = open('Agreement.pdf', 'rb')
+    pdf_message = context.bot.send_document(chat_id, document, caption='Рекомендуем ознакомиться с соглашением об обработке персональных данных')
+    print("message id", pdf_message.message_id)
+    context.user_data.update({'pdf_message_id': pdf_message.message_id})
     query = update.callback_query
     query.answer()
     query.edit_message_text(text="Нам нужно ваше согласие на обработку персональных данных:", reply_markup=reply_markup)
+
     return ENTER_CONTACT_INFO
 
 
 def enter_phone(update, context: CallbackContext) -> None:
+
     phone = update.message.text
     context.user_data.update({'phone': phone})
     update.message.reply_text(phone)
@@ -195,6 +202,7 @@ def process_payment(update, context: CallbackContext) -> None:
 
 
 def choose_contact_info(update, context: CallbackContext) -> None:
+    context.bot.delete_message(update.effective_chat.id, context.user_data['pdf_message_id'])
     query = update.callback_query
     query.answer()
     query.edit_message_text(text="Введите ваш номер телефона:")
