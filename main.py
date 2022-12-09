@@ -6,23 +6,13 @@ import time
 
 SHARE_PHONE, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(14)
 
-def share_phone(update: Update, context: CallbackContext) -> None:
-
-    chat_id = update.effective_chat.id
-    keyboard = [[KeyboardButton('Поделиться телефоном', request_contact=True)], [KeyboardButton('Нет')]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
-    context.bot.send_message(chat_id=chat_id, text='Здравстуйте! Этот бот поможет вам записаться на прием в один из наших салонов. Вы можете ускорить процесс регистрации заказа и сделать его проще, поделившись с нами вашим телефоном', reply_markup=reply_markup)
-
-    return SHARE_PHONE
-
 def share_location(update: Update, context: CallbackContext) -> None:
 
-    print(update.message.contact)
-    context.user_data.update({'phone': update.message.contact['phone_number']})
     chat_id = update.effective_chat.id
     keyboard = [[KeyboardButton('Поделиться расположением', request_location=True)], [KeyboardButton('Нет')]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
-    context.bot.send_message(chat_id=chat_id, text='Вы также можете поделиться расположением, чтобы найти ближайший к вам салон', reply_markup=reply_markup)
+    context.bot.send_message(chat_id=chat_id, text='Здравствуйте! Этот бот поможет вам записаться на прием в один из наших салонов. Вы можете поделиться своим расположением, чтобы найти ближайший к вам салон.', reply_markup=reply_markup)
+
     return SHARE_LOC
 
 def get_location(update: Update, context: CallbackContext) -> None:
@@ -30,11 +20,13 @@ def get_location(update: Update, context: CallbackContext) -> None:
     if update.message.location is not None:
         context.user_data.update({'location': [update.message.location['longitude'], update.message.location['latitude']]})
         print(context.user_data['location'])
+    else:
+        context.user_data.update({'location': None})
 
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
 
-    update.message.reply_text('Здравствуйте! Что вы хотели бы сделать?',
+    update.message.reply_text('Что вы хотели бы сделать?',
                               reply_markup=reply_markup)
     return MAIN_MENU
 
@@ -63,15 +55,16 @@ def main_menu(update: Update, context: CallbackContext) -> None:
     query.answer()
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
-    query.edit_message_text(text         = 'Здравствуйте! Что вы хотели бы сделать?',
-                            reply_markup = reply_markup)
+    query.edit_message_text(text='Что вы хотели бы сделать?',
+                            reply_markup=reply_markup)
     return MAIN_MENU
 
-def share_contacts(update: Update, context: CallbackContext) -> None:
+
+''' def share_contacts(update: Update, context: CallbackContext) -> None:
     print('Телефон', update.message.contact)
 
     return NEXT_STEPS
-
+'''
 
 def main_submenu(update: Update, context: CallbackContext) -> None:
 
@@ -223,17 +216,23 @@ def register_client(update: Update, context: CallbackContext) -> None:
 
 def enter_phone(update, context: CallbackContext) -> None:
 
-    phone = update.message.text
+    if update.message.contact is not None:
+        phone = update.message.contact['phone_number']
+    else:
+        phone = update.message.text
     context.user_data.update({'phone': phone})
     update.message.reply_text(phone)
-    #reply_markup = create_keyboard(['Оплатить'])
     update.message.reply_text("Введите ваше имя:")
     return NAME
 
 def enter_name(update, context: CallbackContext) -> None:
     name = update.message.text
     context.user_data.update({'name': name})
-    update.message.reply_text(f"{name}, номер телефона: {context.user_data['phone']}")
+    update.message.reply_text(f"Заказ номер: 1222344\n"
+                              f"Имя клиента: {name}\n"
+                              f"Номер телефона: {context.user_data['phone']}\n"
+                              f"Салон: {context.user_data['salon']}\n"
+                              )
     reply_markup = create_keyboard(['Оплатить'])
     update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
     return PAY
@@ -244,12 +243,16 @@ def process_payment(update, context: CallbackContext) -> None:
     return ConversationHandler.END
 
 
-
 def choose_contact_info(update, context: CallbackContext) -> None:
     context.bot.delete_message(update.effective_chat.id, context.user_data['pdf_message_id'])
     query = update.callback_query
+    keyboard = [[KeyboardButton('Поделиться телефоном', request_contact=True)]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
     query.answer()
-    query.edit_message_text(text="Введите ваш номер телефона:")
+    chat_id = update.effective_chat.id
+    context.bot.send_message(chat_id=chat_id, text="Введите ваш номер телефона или нажмите кнопку Поделиться телефоном:", reply_markup=reply_markup)
+
+    #query.edit_message_text(text="Введите ваш номер телефона:", reply_markup=reply_markup)
 
 
 def choose_service_first(update: Update, context: CallbackContext) -> None:
@@ -295,9 +298,8 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', share_phone)],
+        entry_points=[CommandHandler('start', share_location)],
         states={
-            SHARE_PHONE: [MessageHandler(Filters.contact | Filters.regex('Нет'), share_location)],
             SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_location)],
             MAIN_MENU: [CallbackQueryHandler(main_submenu, pattern='0'), CallbackQueryHandler(client_area, pattern='1')],
             NEXT_STEPS: [CallbackQueryHandler(choose_salon, pattern='0'), CallbackQueryHandler(choose_service_first, pattern='1'), CallbackQueryHandler(choose_master_first, pattern='2')],
@@ -306,7 +308,7 @@ def main() -> None:
             MASTER: [CallbackQueryHandler(choose_master, pattern='\d+')],
             ENTER_DATE: [CallbackQueryHandler(choose_date, pattern='\d+'), MessageHandler(Filters.text, enter_date)],
             REGISTER: [CallbackQueryHandler(register_client, pattern='\d+')],
-            ENTER_CONTACT_INFO: [CallbackQueryHandler(choose_contact_info, pattern='\d+'), MessageHandler(Filters.text, enter_phone)],
+            ENTER_CONTACT_INFO: [MessageHandler(Filters.contact | Filters.text, enter_phone), CallbackQueryHandler(choose_contact_info, pattern='\d+')],
             NAME: [MessageHandler(Filters.text, enter_name)],
             ORDERS: [CallbackQueryHandler(choose_order, pattern='\d+')],
             PAY: [CallbackQueryHandler(process_payment, pattern='\d+')]
