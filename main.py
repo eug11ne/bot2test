@@ -2,6 +2,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Keyboar
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
 from json_tools import *
 import time
+from geopy.distance import geodesic
+import numpy as np
+
 
 
 SHARE_PHONE, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(14)
@@ -10,8 +13,8 @@ def share_location(update: Update, context: CallbackContext) -> None:
 
     chat_id = update.effective_chat.id
     keyboard = [[KeyboardButton('Поделиться расположением', request_location=True)], [KeyboardButton('Нет')]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
-    context.bot.send_message(chat_id=chat_id, text='Здравствуйте! Этот бот поможет вам записаться на прием в один из наших салонов. Вы можете поделиться своим расположением, чтобы найти ближайший к вам салон.', reply_markup=reply_markup)
+    reply_markup = ReplyKeyboardMarkup(keyboard, row_width=1, one_time_keyboard=True, resize_keyboard=True)
+    context.bot.send_message(chat_id=chat_id, text='Здравствуйте! Этот бот поможет вам записаться на прием в один из наших салонов. Вы можете поделиться своим расположением, чтобы найти ближайший к вам салон. Введите Поделиться расположением или Нет либо нажмите соответствующую кнопку. ', reply_markup=reply_markup)
 
     return SHARE_LOC
 
@@ -116,7 +119,16 @@ def choose_order(update: Update, context: CallbackContext) -> None:
 def choose_salon(update: Update, context: CallbackContext) -> None:
 
     salons = context.user_data['salons']
+    if context.user_data['location'] is not None:
+        distance = []
+        for s in salons:
+            coords = get_salon_coordinates(context.user_data['config'], s)
+            distance += [geodesic(coords, context.user_data['location']).m]
+            print(distance)
+        min_index = np.argmin(distance)
+        salons[min_index] += ' - самый близкий'
     reply_markup = create_keyboard(salons)
+
 
     query = update.callback_query
     query.answer()
@@ -185,6 +197,7 @@ def enter_date(update, context: CallbackContext) -> None:
     try:
         valid_date = time.strptime(date, '%d.%m.%Y')
     except ValueError:
+        context.user_data.update({'date': date})
         update.message.reply_text("Вы ввели неправильную дату. Попробуйте еще раз.")
         return ENTER_DATE
 
@@ -198,6 +211,7 @@ def enter_date(update, context: CallbackContext) -> None:
                ]
 
     reply_markup = create_keyboard(slots)
+    context.user_data.update({'slots': slots})
     update.message.reply_text("Bыберите удобное время:", reply_markup=reply_markup)
     if context.user_data['reorder']:
         return PAY
@@ -219,6 +233,8 @@ def register_client(update: Update, context: CallbackContext) -> None:
     context.user_data.update({'pdf_message_id': pdf_message.message_id})
     query = update.callback_query
     query.answer()
+    chosen_slot = context.user_data['slots'][int(query.data)]
+    context.user_data.update({'slot': chosen_slot})
     query.edit_message_text(text="Нам нужно ваше согласие на обработку персональных данных:", reply_markup=reply_markup)
 
     return ENTER_CONTACT_INFO
@@ -241,6 +257,8 @@ def enter_name(update, context: CallbackContext) -> None:
     update.message.reply_text(f"Заказ номер: 1222344\n"
                               f"Имя клиента: {name}\n"
                               f"Номер телефона: {context.user_data['phone']}\n"
+                              f"Дата: {context.user_data['date']}\n"
+                              f"Время: {context.user_data['slot']}\n"
                               f"Салон: {context.user_data['salon']}\n"
                               f"Мастер: {context.user_data['master']}"
                               )

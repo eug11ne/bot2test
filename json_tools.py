@@ -12,6 +12,15 @@ def get_master_names(json_data, salon):
             masters.append(json_data['MASTERS'][master]['name'])
     return masters
 
+def get_salon_coordinates(json_data, salon_name):
+    coordinates = []
+    for salon in json_data['SALONS']:
+        if json_data['SALONS'][salon]['name'] == salon_name:
+            coordinates = json_data['SALONS'][salon]['coordinates']
+            return coordinates
+
+
+
 def get_all_master_names(json_data):
     masters = []
     for master in json_data['MASTERS']:
