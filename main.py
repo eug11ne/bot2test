@@ -15,7 +15,7 @@ def share_phone(update: Update, context: CallbackContext) -> None:
 
     return SHARE_PHONE
 
-def share_loc(update: Update, context: CallbackContext) -> None:
+def share_location(update: Update, context: CallbackContext) -> None:
 
     print(update.message.contact)
     context.user_data.update({'phone': update.message.contact['phone_number']})
@@ -25,7 +25,7 @@ def share_loc(update: Update, context: CallbackContext) -> None:
     context.bot.send_message(chat_id=chat_id, text='Вы также можете поделиться расположением, чтобы найти ближайший к вам салон', reply_markup=reply_markup)
     return SHARE_LOC
 
-def get_loc(update: Update, context: CallbackContext) -> None:
+def get_location(update: Update, context: CallbackContext) -> None:
 
     if update.message.location is not None:
         context.user_data.update({'location': [update.message.location['longitude'], update.message.location['latitude']]})
@@ -297,8 +297,8 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', share_phone)],
         states={
-            SHARE_PHONE: [MessageHandler(Filters.contact | Filters.regex('Нет'), share_loc)],
-            SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_loc)],
+            SHARE_PHONE: [MessageHandler(Filters.contact | Filters.regex('Нет'), share_location)],
+            SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_location)],
             MAIN_MENU: [CallbackQueryHandler(main_submenu, pattern='0'), CallbackQueryHandler(client_area, pattern='1')],
             NEXT_STEPS: [CallbackQueryHandler(choose_salon, pattern='0'), CallbackQueryHandler(choose_service_first, pattern='1'), CallbackQueryHandler(choose_master_first, pattern='2')],
             SALON: [CallbackQueryHandler(choose_salon, pattern='\d+')],
