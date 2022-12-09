@@ -1,5 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
+from json_tools import *
+import time
 
 
 MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(12)
@@ -31,9 +33,21 @@ def main_menu(update: Update, context: CallbackContext) -> None:
 
 
 def main_submenu(update: Update, context: CallbackContext) -> None:
-    context.user_data.update({'choose_service_first': False, 'choose_master_first': False, 'reorder': False})
 
     next_steps = ['Выбрать салон', 'Выбрать услугу', 'Выбрать мастера']
+    bot_config = load_json()
+    salons = get_salon_names(bot_config)
+    services = get_service_names(bot_config)
+    all_masters = get_all_master_names(bot_config)
+
+    context.user_data.update({'choose_salon_first': False,
+                              'choose_service_first': False,
+                              'choose_master_first': False,
+                              'reorder': False,
+                              'config': bot_config,
+                              'salons': salons,
+                              'services': services,
+                              'all_masters': all_masters})
 
     reply_markup = create_keyboard(next_steps)
 
@@ -42,8 +56,6 @@ def main_submenu(update: Update, context: CallbackContext) -> None:
 
     query.edit_message_text(text="Вы хотели бы:", reply_markup=reply_markup)
     return NEXT_STEPS
-
-
 
 def client_area(update: Update, context: CallbackContext) -> None:
     orders = ['122234', '344224', '333223', '12984']
@@ -66,12 +78,7 @@ def choose_order(update: Update, context: CallbackContext) -> None:
 
 def choose_salon(update: Update, context: CallbackContext) -> None:
 
-    salons = ['Салон на Павелецкой',
-              'Салон на Пресне',
-              'Салон в Сити',
-              'Салон на Кутузовском'
-              ]
-
+    salons = context.user_data['salons']
     reply_markup = create_keyboard(salons)
 
     query = update.callback_query
@@ -83,24 +90,21 @@ def choose_salon(update: Update, context: CallbackContext) -> None:
     elif context.user_data['choose_service_first']:
         return MASTER
     else:
+        context.user_data.update({'choose_salon_first': True})
         return SERVICE
 
 def choose_service(update: Update, context: CallbackContext) -> None:
 
-    services = ['Супер-детокс обертывание',
-    'Томатное обертывание',
-    'Парафинотерапия',
-    'Автозагар',
-    'Водорослевый пилинг',
-    'Парафиновые ванны',
-    'Массажная программа']
-
-
+    services = context.user_data['services']
     reply_markup = create_keyboard(services)
     print(context.user_data)
 
     query = update.callback_query
     query.answer()
+    if context.user_data['choose_salon_first']:
+        current_salon = context.user_data['salons'][int(query.data)]
+        context.user_data.update({'salon': current_salon})
+        print(context.user_data['salon'])
     query.edit_message_text(text=f"Выберите одну из следующих услуг:", reply_markup=reply_markup)
 
     if context.user_data['choose_master_first']:
@@ -109,16 +113,17 @@ def choose_service(update: Update, context: CallbackContext) -> None:
 
 def choose_master(update: Update, context: CallbackContext) -> None:
 
-    masters = ['Иванова',
-    'Сергеева',
-    'Цветкова',
-    'Капустина']
+    query = update.callback_query
+    query.answer()
 
+    if context.user_data['choose_service_first']:
+        current_salon = context.user_data['salons'][int(query.data)]
+        context.user_data.update({'salon': current_salon})
+
+    masters = get_master_names(context.user_data['config'], context.user_data['salon'])
     reply_markup = create_keyboard(masters)
     print(context.user_data)
 
-    query = update.callback_query
-    query.answer()
     query.edit_message_text(text="Выбранную услугу может оказать один из следующих мастеров:", reply_markup=reply_markup)
     return ENTER_DATE
 
@@ -126,21 +131,26 @@ def choose_date(update: Update, context: CallbackContext) -> None:
 
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Введите подходящую дату:")
-
+    query.edit_message_text(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:")
 
 def enter_date(update, context: CallbackContext) -> None:
     date = update.message.text
+    try:
+        valid_date = time.strptime(date, '%d.%m.%Y')
+    except ValueError:
+        update.message.reply_text("Вы ввели неправильную дату. Попробуйте еще раз.")
+        return ENTER_DATE
+
     context.user_data.update({'date': date})
-    update.message.reply_text(date)
-    masters = ['10:00 - 11:00',
+    update.message.reply_text(f'Будем ждать вас {date}')
+    slots = ['10:00 - 11:00',
                '11:00 - 12:00',
                '11:00 - 13:00',
                '13:00 - 14:00',
                '14:00 - 15:00',
                ]
 
-    reply_markup = create_keyboard(masters)
+    reply_markup = create_keyboard(slots)
     update.message.reply_text("Bыберите удобное время:", reply_markup=reply_markup)
     if context.user_data['reorder']:
         return PAY
@@ -194,15 +204,7 @@ def choose_service_first(update: Update, context: CallbackContext) -> None:
 
     context.user_data.update({'choose_service_first': True})
 
-    services = [
-        'Супер-детокс обертывание',
-        'Томатное обертывание',
-        'Парафинотерапия',
-        'Автозагар',
-        'Водорослевый пилинг',
-        'Парафиновые ванны',
-        'Массажная программа'
-                ]
+    services = context.user_data['services']
 
     reply_markup = create_keyboard(services)
     print(context.user_data)
@@ -215,13 +217,7 @@ def choose_service_first(update: Update, context: CallbackContext) -> None:
 
 def choose_master_first(update: Update, context: CallbackContext) -> None:
     context.user_data.update({'choose_master_first': True})
-    masters = [
-        'Иванова',
-        'Сергеева',
-        'Цветкова',
-        'Капустина'
-        ]
-
+    masters = context.user_data['all_masters']
 
     reply_markup = create_keyboard(masters)
     print(context.user_data)
