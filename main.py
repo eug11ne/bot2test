@@ -119,6 +119,8 @@ def choose_order(update: Update, context: CallbackContext) -> None:
 def choose_salon(update: Update, context: CallbackContext) -> None:
 
     salons = context.user_data['salons']
+    reply_markup = create_keyboard(salons)
+    addon_message = ''
     if context.user_data['location'] is not None:
         distance = []
         for s in salons:
@@ -126,13 +128,13 @@ def choose_salon(update: Update, context: CallbackContext) -> None:
             distance += [geodesic(coords, context.user_data['location']).m]
             print(distance)
         min_index = np.argmin(distance)
-        salons[min_index] += ' - самый близкий'
-    reply_markup = create_keyboard(salons)
+        addon_message = f'Ближе всего к вам - {salons[min_index]}.'
+
 
 
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Выберите подходящий салон:", reply_markup=reply_markup)
+    query.edit_message_text(text=f"Выберите подходящий салон. {addon_message}", reply_markup=reply_markup)
 
     if context.user_data['choose_master_first']:
         return ENTER_DATE
@@ -254,7 +256,7 @@ def enter_phone(update, context: CallbackContext) -> None:
 def enter_name(update, context: CallbackContext) -> None:
     name = update.message.text
     context.user_data.update({'name': name})
-    update.message.reply_text(f"Заказ номер: 1222344\n"
+    update.message.reply_text(f"Номер заказа: 1222344\n"
                               f"Имя клиента: {name}\n"
                               f"Номер телефона: {context.user_data['phone']}\n"
                               f"Дата: {context.user_data['date']}\n"
