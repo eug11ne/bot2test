@@ -145,6 +145,8 @@ def choose_service(update: Update, context: CallbackContext) -> None:
     query.edit_message_text(text=f"Выберите одну из следующих услуг:", reply_markup=reply_markup)
 
     if context.user_data['choose_master_first']:
+        current_master = context.user_data['all_masters'][int(query.data)]
+        context.user_data.update({'master': current_master})
         return SALON
     return MASTER
 
@@ -157,8 +159,9 @@ def choose_master(update: Update, context: CallbackContext) -> None:
         current_salon = context.user_data['salons'][int(query.data)]
         context.user_data.update({'salon': current_salon})
 
-    masters = get_master_names(context.user_data['config'], context.user_data['salon'])
-    reply_markup = create_keyboard(masters)
+    available_masters = get_master_names(context.user_data['config'], context.user_data['salon'])
+    context.user_data.update({'masters': available_masters})
+    reply_markup = create_keyboard(available_masters)
     print(context.user_data)
 
     query.edit_message_text(text="Выбранную услугу может оказать один из следующих мастеров:", reply_markup=reply_markup)
@@ -167,6 +170,13 @@ def choose_master(update: Update, context: CallbackContext) -> None:
 def choose_date(update: Update, context: CallbackContext) -> None:
 
     query = update.callback_query
+    if context.user_data['choose_salon_first']:
+        current_master = context.user_data['masters'][int(query.data)]
+        context.user_data.update({'master': current_master})
+    if context.user_data['choose_master_first']:
+        current_salon = context.user_data['salons'][int(query.data)]
+        context.user_data.update({'salon': current_salon})
+
     query.answer()
     query.edit_message_text(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:")
 
@@ -232,6 +242,7 @@ def enter_name(update, context: CallbackContext) -> None:
                               f"Имя клиента: {name}\n"
                               f"Номер телефона: {context.user_data['phone']}\n"
                               f"Салон: {context.user_data['salon']}\n"
+                              f"Мастер: {context.user_data['master']}"
                               )
     reply_markup = create_keyboard(['Оплатить'])
     update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
