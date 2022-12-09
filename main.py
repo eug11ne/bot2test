@@ -4,6 +4,7 @@ from json_tools import *
 import time
 from geopy.distance import geodesic
 import numpy as np
+from datetime import timedelta, datetime
 
 
 
@@ -194,17 +195,23 @@ def choose_date(update: Update, context: CallbackContext) -> None:
 def enter_date(update, context: CallbackContext) -> None:
     date = update.message.text
     try:
-        valid_date = time.strptime(date, '%d.%m.%Y')
+        valid_date = datetime.strptime(date, '%d.%m.%Y')
     except ValueError:
-        context.user_data.update({'date': date})
         update.message.reply_text("Вы ввели неправильную дату. Попробуйте еще раз.")
+        return ENTER_DATE
+    if valid_date < datetime.now():
+        update.message.reply_text("Вы ввели дату в прошлом. Попробуйте еще раз.")
+        return ENTER_DATE
+    elif (valid_date - datetime.now()).days > 30:
+        update.message.reply_text("Мы не принимаем заказы более чем на месяц вперед. Попробуйте еще раз.")
         return ENTER_DATE
 
     context.user_data.update({'date': date})
+
     update.message.reply_text(f'Будем ждать вас {date}')
     slots = ['10:00 - 11:00',
                '11:00 - 12:00',
-               '11:00 - 13:00',
+               '12:00 - 13:00',
                '13:00 - 14:00',
                '14:00 - 15:00',
                ]
