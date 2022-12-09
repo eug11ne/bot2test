@@ -1,13 +1,35 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
 from json_tools import *
 import time
 
 
-MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(12)
+SHARE_PHONE, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(14)
 
+def share_phone(update: Update, context: CallbackContext) -> None:
 
-def start(update: Update, context: CallbackContext) -> None:
+    chat_id = update.effective_chat.id
+    keyboard = [[KeyboardButton('Поделиться телефоном', request_contact=True)], [KeyboardButton('Нет')]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
+    context.bot.send_message(chat_id=chat_id, text='Здравстуйте! Этот бот поможет вам записаться на прием в один из наших салонов. Вы можете ускорить процесс регистрации заказа и сделать его проще, поделившись с нами вашим телефоном', reply_markup=reply_markup)
+
+    return SHARE_PHONE
+
+def share_loc(update: Update, context: CallbackContext) -> None:
+
+    print(update.message.contact)
+    context.user_data.update({'phone': update.message.contact['phone_number']})
+    chat_id = update.effective_chat.id
+    keyboard = [[KeyboardButton('Поделиться расположением', request_location=True)], [KeyboardButton('Нет')]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, row_width=1, resize_keyboard=True)
+    context.bot.send_message(chat_id=chat_id, text='Вы также можете поделиться расположением, чтобы найти ближайший к вам салон', reply_markup=reply_markup)
+    return SHARE_LOC
+
+def get_loc(update: Update, context: CallbackContext) -> None:
+
+    if update.message.location is not None:
+        context.user_data.update({'location': [update.message.location['longitude'], update.message.location['latitude']]})
+        print(context.user_data['location'])
 
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
@@ -16,9 +38,23 @@ def start(update: Update, context: CallbackContext) -> None:
                               reply_markup=reply_markup)
     return MAIN_MENU
 
+
+'''
+def start(update: Update, context: CallbackContext) -> None:
+
+    kbd = ['Записаться', 'Открыть личный кабинет']
+    reply_markup = create_keyboard(kbd)
+
+
+    update.message.reply_text('Здравствуйте! Что вы хотели бы сделать?',
+                              reply_markup=reply_markup)
+    return MAIN_MENU '''
+
 def cancel(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Попробуйте снова с помощью команды /start")
     return ConversationHandler.END
+
+
 
 
 def main_menu(update: Update, context: CallbackContext) -> None:
@@ -31,10 +67,18 @@ def main_menu(update: Update, context: CallbackContext) -> None:
                             reply_markup = reply_markup)
     return MAIN_MENU
 
+def share_contacts(update: Update, context: CallbackContext) -> None:
+    print('Телефон', update.message.contact)
+
+    return NEXT_STEPS
+
 
 def main_submenu(update: Update, context: CallbackContext) -> None:
 
     next_steps = ['Выбрать салон', 'Выбрать услугу', 'Выбрать мастера']
+    user_id = update.effective_user.id
+    user_name = update.effective_user.username
+    print(f'user: {user_name}, {user_id}')
     bot_config = load_json()
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
@@ -251,8 +295,10 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', share_phone)],
         states={
+            SHARE_PHONE: [MessageHandler(Filters.contact | Filters.regex('Нет'), share_loc)],
+            SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_loc)],
             MAIN_MENU: [CallbackQueryHandler(main_submenu, pattern='0'), CallbackQueryHandler(client_area, pattern='1')],
             NEXT_STEPS: [CallbackQueryHandler(choose_salon, pattern='0'), CallbackQueryHandler(choose_service_first, pattern='1'), CallbackQueryHandler(choose_master_first, pattern='2')],
             SALON: [CallbackQueryHandler(choose_salon, pattern='\d+')],
