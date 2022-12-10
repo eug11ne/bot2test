@@ -13,7 +13,7 @@ SHARE_LOC_REQUEST, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, SERVICE_GEO
 SBER_TOKEN = '401643678:TEST:dafbe70b-9c49-4b23-b0b0-92527a1a21dd'
 USERS_JSON = 'users_struct.json'
 
-with open(USERS_JSON, 'r') as file_users:
+with open(USERS_JSON, 'r', encoding='utf-8') as file_users:
     if os.stat(USERS_JSON).st_size:
         USERS = json.load(file_users)
     else:
@@ -448,7 +448,7 @@ def successful_payment_callback(update: Update, context: CallbackContext) -> Non
         }
     )
 
-    with open(USERS_JSON, 'w') as users_output:
+    with open(USERS_JSON, 'w', encoding='utf-8') as users_output:
         json.dump(USERS, users_output, indent=4, ensure_ascii=False)
 
     update.message.reply_text("Спасибо за запись!")

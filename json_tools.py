@@ -1,7 +1,7 @@
 import json
 
 def load_json(filename):
-    with open(filename) as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         json_data = json.load(f)
     return json_data
 
