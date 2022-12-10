@@ -7,14 +7,18 @@ Python3 должен быть уже установлен.
 ```
 pip install -r requirements.txt
 ```
-Для работы создайте Telegram бота и получить его токен у [Отца Ботов](https://telegram.me/BotFather).<br/> 
+Для работы создайте Telegram бота и получить его токен у [Отца Ботов](https://telegram.me/BotFather).
 Полученный ключ необходимо прописать в файле .env, как показано ниже.
 ```
 TELEGRAM_TOKEN=токен_бота
 ```
 
+Для теста оплаты необходимо получить токен у [BotFather](https://t.me/BotFather) и положить его в SBER_TOKEN.
+[Тестовые карты](https://securepayments.sberbank.ru/wiki/doku.php/test_cards). Лучше использовать "заглушку" в самом шлюзе. 
+
 ## Как запустить
 Для запуска бота необходимо запустить файл из консоли.
+
 ```
 $ python main.py
 ```
