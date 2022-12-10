@@ -200,6 +200,9 @@ def choose_order(update: Update, context: CallbackContext) -> None:
                                  f"Услуга: {order_details['service']}\n"
                                  f"Салон: {order_details['salon']}\n"
                                  f"Мастер: {order_details['master']}", reply_markup=reply_markup)
+    context.user_data.update({'service': order_details['service']})
+    context.user_data.update({'salon': order_details['salon']})
+    context.user_data.update({'master': order_details['master']})
     return ENTER_DATE
 
 def choose_salon(update: Update, context: CallbackContext) -> None:
