@@ -11,6 +11,15 @@ def get_orders(json_data, user_name):
         orders.append(order['order_id'])
     return orders
 
+def get_order_details(json_data, user_name, order_id):
+    details = {}
+    for order in json_data[user_name]['orders']:
+        if order['order_id'] == order_id:
+            details.update({'salon': order['salon'],
+                            'service': order['service'],
+                            'master': order['master']})
+    return details
+
 def get_master_names(json_data, salon):
     masters = []
     for master in json_data['MASTERS']:

@@ -16,8 +16,8 @@ def share_location(update: Update, context: CallbackContext) -> None:
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
     bot_config = load_json('config.json')
-    bot_users = load_json('USERS.json')
-    print(get_orders(bot_users, user_name))
+
+
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
     all_masters = get_all_master_names(bot_config)
@@ -136,7 +136,7 @@ def main_submenu(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
-    bot_config = load_json()
+    bot_config = load_json('config.json')
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
     all_masters = get_all_master_names(bot_config)
@@ -159,7 +159,9 @@ def main_submenu(update: Update, context: CallbackContext) -> None:
     return NEXT_STEPS
 
 def client_area(update: Update, context: CallbackContext) -> None:
-    orders = ['122234', '344224', '333223', '12984']
+    user_name = update.effective_user.username
+    bot_users = load_json('USERS.json')
+    orders = get_orders(bot_users, user_name)
     reply_markup = create_keyboard(orders)
     query = update.callback_query
     query.answer()
@@ -393,9 +395,8 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-
             MAIN_MENU: [CallbackQueryHandler(main_submenu, pattern='0'), CallbackQueryHandler(client_area, pattern='1')],
-            SHARE_LOC_REQUEST: [CallbackQueryHandler(share_location, pattern='0'), CallbackQueryHandler(main_submenu, pattern='1')],
+            SHARE_LOC_REQUEST: [CallbackQueryHandler(share_location, pattern='0'), CallbackQueryHandler(client_area, pattern='1')],
             SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_location)],
             SERVICE_GEO: [CallbackQueryHandler(choose_service, pattern='0'), CallbackQueryHandler(main_submenu, pattern='1')],
             NEXT_STEPS: [CallbackQueryHandler(choose_salon, pattern='0'), CallbackQueryHandler(choose_service_first, pattern='1'), CallbackQueryHandler(choose_master_first, pattern='2')],
