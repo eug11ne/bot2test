@@ -12,6 +12,25 @@ SHARE_LOC_REQUEST, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, SERVICE_GEO
 
 def share_location(update: Update, context: CallbackContext) -> None:
 
+    user_id = update.effective_user.id
+    user_name = update.effective_user.username
+    print(f'user: {user_name}, {user_id}')
+    bot_config = load_json('config.json')
+    bot_users = load_json('USERS.json')
+    print(get_orders(bot_users, user_name))
+    salons = get_salon_names(bot_config)
+    services = get_service_names(bot_config)
+    all_masters = get_all_master_names(bot_config)
+
+    context.user_data.update({'choose_salon_first': False,
+                              'choose_service_first': False,
+                              'choose_master_first': False,
+                              'reorder': False,
+                              'config': bot_config,
+                              'salons': salons,
+                              'services': services,
+                              'all_masters': all_masters})
+
     chat_id = update.effective_chat.id
     keyboard = [[KeyboardButton('Да', request_location=True)], [KeyboardButton('Нет')]]
     reply_markup = ReplyKeyboardMarkup(keyboard, row_width=1, one_time_keyboard=True, resize_keyboard=True)
@@ -56,10 +75,11 @@ def get_location(update: Update, context: CallbackContext) -> None:
         context.user_data.update({'location': None})
 
     next_steps = ['Выбрать салон', 'Выбрать услугу', 'Выбрать мастера']
+    '''
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
-    bot_config = load_json()
+    bot_config = load_json('config.json')    
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
     all_masters = get_all_master_names(bot_config)
@@ -72,7 +92,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
                               'salons': salons,
                               'services': services,
                               'all_masters': all_masters})
-
+'''
     reply_markup = create_keyboard(next_steps)
 
     #query = update.callback_query

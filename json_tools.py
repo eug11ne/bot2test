@@ -1,9 +1,15 @@
 import json
 
-def load_json():
-    with open('config.json') as f:
+def load_json(filename):
+    with open(filename) as f:
         json_data = json.load(f)
     return json_data
+
+def get_orders(json_data, user_name):
+    orders = []
+    for order in json_data[user_name]['orders']:
+        orders.append(order['order_id'])
+    return orders
 
 def get_master_names(json_data, salon):
     masters = []
