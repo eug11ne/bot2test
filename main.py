@@ -43,7 +43,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
 
     if update.message.location is not None:
         yes_no = ['Да', 'Нет']
-        context.user_data.update({'location': [update.message.location['longitude'], update.message.location['latitude']]})
+        context.user_data.update({'location': [update.message.location['latitude'], update.message.location['longitude']]})
         print(context.user_data['location'])
         closest_salon = find_closest_salon(context.user_data['config'], context.user_data['salons'], context.user_data['location'])
         reply_markup = create_keyboard(yes_no)
