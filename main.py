@@ -116,6 +116,19 @@ def start(update: Update, context: CallbackContext) -> None:
     kbd = ['Записаться', 'Открыть личный кабинет']
     reply_markup = create_keyboard(kbd)
 
+    bot_config = load_json('config.json')
+    salons = get_salon_names(bot_config)
+    services = get_service_names(bot_config)
+    all_masters = get_all_master_names(bot_config)
+
+    context.user_data.update({'choose_salon_first': False,
+                              'choose_service_first': False,
+                              'choose_master_first': False,
+                              'reorder': False,
+                              'config': bot_config,
+                              'salons': salons,
+                              'services': services,
+                              'all_masters': all_masters})
 
     update.message.reply_text('Здравствуйте! Что вы хотели бы сделать?',
                               reply_markup=reply_markup)
@@ -145,19 +158,6 @@ def main_submenu(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
-    bot_config = load_json('config.json')
-    salons = get_salon_names(bot_config)
-    services = get_service_names(bot_config)
-    all_masters = get_all_master_names(bot_config)
-
-    context.user_data.update({'choose_salon_first': False,
-                              'choose_service_first': False,
-                              'choose_master_first': False,
-                              'reorder': False,
-                              'config': bot_config,
-                              'salons': salons,
-                              'services': services,
-                              'all_masters': all_masters})
 
     reply_markup = create_keyboard(next_steps)
 
@@ -179,6 +179,9 @@ def client_area(update: Update, context: CallbackContext) -> None:
     user_name = update.effective_user.username
     bot_users = load_json('USERS.json')
     orders = get_orders(bot_users, user_name)
+    context.user_data.update({'orders': orders})
+    context.user_data.update({'user_name': user_name})
+    context.user_data.update({'users': bot_users})
     reply_markup = create_keyboard(orders)
     query = update.callback_query
     query.answer()
@@ -191,7 +194,12 @@ def choose_order(update: Update, context: CallbackContext) -> None:
     reply_markup = create_keyboard(reorder)
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Вы заказывали массаж в Салоне на Павелецкой у мастера Ивановой:", reply_markup=reply_markup)
+    order_details = get_order_details(context.user_data['users'], context.user_data['user_name'], context.user_data['orders'][int(query.data)])
+
+    query.edit_message_text(text=f"Заказ {context.user_data['orders'][int(query.data)]}\n"
+                                 f"Услуга: {order_details['service']}\n"
+                                 f"Салон: {order_details['salon']}\n"
+                                 f"Мастер: {order_details['master']}", reply_markup=reply_markup)
     return ENTER_DATE
 
 def choose_salon(update: Update, context: CallbackContext) -> None:
@@ -447,7 +455,7 @@ def main() -> None:
     """Run the bot."""
     # Create the Updater and pass it your bot's token.
 
-    updater = Updater("")
+    updater = Updater("5939603614:AAHQRADVt5SVleCzifGK3nUH1tyJeNfZ104")
     #5837429177:AAGgLSWwHewJotuQRIyOTWGeEbjixF0DVNk
     #bot22test_bot
     #5939603614:AAHQRADVt5SVleCzifGK3nUH1tyJeNfZ104
