@@ -8,34 +8,80 @@ from datetime import timedelta, datetime
 
 
 
-SHARE_PHONE, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(14)
+SHARE_LOC_REQUEST, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, SERVICE_GEO, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(15)
 
 def share_location(update: Update, context: CallbackContext) -> None:
 
     chat_id = update.effective_chat.id
-    keyboard = [[KeyboardButton('Поделиться расположением', request_location=True)], [KeyboardButton('Нет')]]
+    keyboard = [[KeyboardButton('Да', request_location=True)], [KeyboardButton('Нет')]]
     reply_markup = ReplyKeyboardMarkup(keyboard, row_width=1, one_time_keyboard=True, resize_keyboard=True)
-    context.bot.send_message(chat_id=chat_id, text='Здравствуйте! Этот бот поможет вам записаться на прием в один из наших салонов. Вы можете поделиться своим расположением, чтобы найти ближайший к вам салон. Введите Поделиться расположением или Нет либо нажмите соответствующую кнопку. ', reply_markup=reply_markup)
+    context.bot.send_message(chat_id=chat_id, text='Если хотите выбрать ближайший салон, нажмите кнопку Да. В противном случае нажмите кнопку Нет.', reply_markup=reply_markup)
 
     return SHARE_LOC
 
 def get_location(update: Update, context: CallbackContext) -> None:
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    user_name = update.effective_user.username
+    print(f'user: {user_name}, {user_id}')
+    bot_config = load_json()
+    salons = get_salon_names(bot_config)
+    services = get_service_names(bot_config)
+    all_masters = get_all_master_names(bot_config)
+
+    context.user_data.update({'choose_salon_first': False,
+                              'choose_service_first': False,
+                              'choose_master_first': False,
+                              'reorder': False,
+                              'config': bot_config,
+                              'salons': salons,
+                              'services': services,
+                              'all_masters': all_masters,
+                              'salon': None,
+                              'service': None,
+                              'master': None})
 
     if update.message.location is not None:
+        yes_no = ['Да', 'Нет']
         context.user_data.update({'location': [update.message.location['longitude'], update.message.location['latitude']]})
         print(context.user_data['location'])
+        closest_salon = find_closest_salon(context.user_data['config'], context.user_data['salons'], context.user_data['location'])
+        reply_markup = create_keyboard(yes_no)
+        context.bot.send_message(chat_id=chat_id, text=f"Ближе всего к вам находится {closest_salon}. Выбрать его?", reply_markup=reply_markup)
+        context.user_data.update({'salon': closest_salon})
+        context.user_data.update({'choose_salon_first': True})
+        return SERVICE_GEO
+
     else:
         context.user_data.update({'location': None})
 
-    kbd = ['Записаться', 'Открыть личный кабинет']
-    reply_markup = create_keyboard(kbd)
+    next_steps = ['Выбрать салон', 'Выбрать услугу', 'Выбрать мастера']
+    user_id = update.effective_user.id
+    user_name = update.effective_user.username
+    print(f'user: {user_name}, {user_id}')
+    bot_config = load_json()
+    salons = get_salon_names(bot_config)
+    services = get_service_names(bot_config)
+    all_masters = get_all_master_names(bot_config)
 
-    update.message.reply_text('Что вы хотели бы сделать?',
-                              reply_markup=reply_markup)
-    return MAIN_MENU
+    context.user_data.update({'choose_salon_first': False,
+                              'choose_service_first': False,
+                              'choose_master_first': False,
+                              'reorder': False,
+                              'config': bot_config,
+                              'salons': salons,
+                              'services': services,
+                              'all_masters': all_masters})
+
+    reply_markup = create_keyboard(next_steps)
+
+    #query = update.callback_query
+    #query.answer()
 
 
-'''
+    context.bot.send_message(chat_id=chat_id, text="Вы хотели бы:", reply_markup=reply_markup)
+    return NEXT_STEPS
+
 def start(update: Update, context: CallbackContext) -> None:
 
     kbd = ['Записаться', 'Открыть личный кабинет']
@@ -44,7 +90,7 @@ def start(update: Update, context: CallbackContext) -> None:
 
     update.message.reply_text('Здравствуйте! Что вы хотели бы сделать?',
                               reply_markup=reply_markup)
-    return MAIN_MENU '''
+    return SHARE_LOC_REQUEST
 
 def cancel(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Попробуйте снова с помощью команды /start")
@@ -63,12 +109,6 @@ def main_menu(update: Update, context: CallbackContext) -> None:
                             reply_markup=reply_markup)
     return MAIN_MENU
 
-
-''' def share_contacts(update: Update, context: CallbackContext) -> None:
-    print('Телефон', update.message.contact)
-
-    return NEXT_STEPS
-'''
 
 def main_submenu(update: Update, context: CallbackContext) -> None:
 
@@ -121,18 +161,10 @@ def choose_salon(update: Update, context: CallbackContext) -> None:
 
     salons = context.user_data['salons']
     reply_markup = create_keyboard(salons)
-    addon_message = ''
-    if context.user_data['location'] is not None:
-        distance = []
-        for s in salons:
-            coords = get_salon_coordinates(context.user_data['config'], s)
-            distance += [geodesic(coords, context.user_data['location']).m]
-        min_index = np.argmin(distance)
-        addon_message = f'Ближе всего к вам - {salons[min_index]}.'
 
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text=f"Выберите подходящий салон. {addon_message}", reply_markup=reply_markup)
+    query.edit_message_text(text=f"Выберите подходящий салон.", reply_markup=reply_markup)
 
     if context.user_data['choose_master_first']:
         return ENTER_DATE
@@ -150,7 +182,7 @@ def choose_service(update: Update, context: CallbackContext) -> None:
 
     query = update.callback_query
     query.answer()
-    if context.user_data['choose_salon_first']:
+    if context.user_data['choose_salon_first'] and context.user_data['salon'] is None:
         current_salon = context.user_data['salons'][int(query.data)]
         context.user_data.update({'salon': current_salon})
         print(context.user_data['salon'])
@@ -232,11 +264,6 @@ def register_client(update: Update, context: CallbackContext) -> None:
                     ]
 
     reply_markup = create_keyboard(registration)
-    chat_id = update.effective_chat.id
-    document = open('Agreement.pdf', 'rb')
-    #pdf_message = context.bot.send_document(chat_id, document, caption='Рекомендуем ознакомиться с соглашением об обработке персональных данных')
-    #print("message id", pdf_message.message_id)
-    #context.user_data.update({'pdf_message_id': pdf_message.message_id})
     query = update.callback_query
     query.answer()
     chosen_slot = context.user_data['slots'][int(query.data)]
@@ -321,29 +348,43 @@ def create_keyboard(button_names):
     keyboard = [[InlineKeyboardButton(kb, callback_data=f'{button_names.index(kb)}')] for kb in button_names]
     return InlineKeyboardMarkup(keyboard)
 
+def find_closest_salon(config, salons, location):
+    distance = []
+    for s in salons:
+        coords = get_salon_coordinates(config, s)
+        distance.append(geodesic(coords, location).m)
+        print(s, geodesic(coords, location).km, coords)
+    min_index = np.argmin(distance)
 
-
+    return salons[min_index]
 
 def main() -> None:
     """Run the bot."""
     # Create the Updater and pass it your bot's token.
 
     updater = Updater("5939603614:AAHQRADVt5SVleCzifGK3nUH1tyJeNfZ104")
+    #5837429177:AAGgLSWwHewJotuQRIyOTWGeEbjixF0DVNk
+    #bot22test_bot
+    #5939603614:AAHQRADVt5SVleCzifGK3nUH1tyJeNfZ104
+    #bot2test_bot
 
     dispatcher = updater.dispatcher
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', share_location)],
+        entry_points=[CommandHandler('start', start)],
         states={
-            SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_location)],
+
             MAIN_MENU: [CallbackQueryHandler(main_submenu, pattern='0'), CallbackQueryHandler(client_area, pattern='1')],
+            SHARE_LOC_REQUEST: [CallbackQueryHandler(share_location, pattern='0'), CallbackQueryHandler(main_submenu, pattern='1')],
+            SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_location)],
+            SERVICE_GEO: [CallbackQueryHandler(choose_service, pattern='0'), CallbackQueryHandler(main_submenu, pattern='1')],
             NEXT_STEPS: [CallbackQueryHandler(choose_salon, pattern='0'), CallbackQueryHandler(choose_service_first, pattern='1'), CallbackQueryHandler(choose_master_first, pattern='2')],
             SALON: [CallbackQueryHandler(choose_salon, pattern='\d+')],
             SERVICE: [CallbackQueryHandler(choose_service, pattern='\d+')],
             MASTER: [CallbackQueryHandler(choose_master, pattern='\d+')],
             ENTER_DATE: [CallbackQueryHandler(choose_date, pattern='\d+'), MessageHandler(Filters.text, enter_date)],
             REGISTER: [CallbackQueryHandler(register_client, pattern='\d+')],
-            ENTER_CONTACT_INFO: [MessageHandler(Filters.contact | Filters.text, enter_phone), CallbackQueryHandler(choose_contact_info, pattern='\d+')],
+            ENTER_CONTACT_INFO: [MessageHandler(Filters.contact | Filters.text, enter_phone), CallbackQueryHandler(choose_contact_info, pattern='0'), CallbackQueryHandler(start, pattern='1')],
             NAME: [MessageHandler(Filters.text, enter_name)],
             ORDERS: [CallbackQueryHandler(choose_order, pattern='\d+')],
             PAY: [CallbackQueryHandler(process_payment, pattern='\d+')]
