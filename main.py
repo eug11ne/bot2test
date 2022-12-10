@@ -410,17 +410,19 @@ def find_closest_salon(config, salons, location):
 
 
 def process_payment(update, context: CallbackContext) -> None:
-    price = 500 * 100
-
     context.bot.send_invoice(
         chat_id=update.effective_chat.id,
-        title='Test donation',
-        description='Give money here.',
+        title=context.user_data.get('salon') or 'Салон красоты',
+        description='Оплата услуг',
         payload='test',
         provider_token=SBER_TOKEN,
         currency='RUB',
-        prices=[LabeledPrice('Give', price)],
-        need_name=False,
+        prices=[
+            LabeledPrice(
+                context.user_data.get('service') or 'Услуги салона',
+                context.user_data.get('price') or 500 * 100,
+            )
+        ]
     )
 
 
