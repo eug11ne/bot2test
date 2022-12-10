@@ -1,14 +1,23 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton, ReplyKeyboardMarkup, LabeledPrice
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters, PreCheckoutQueryHandler
 from json_tools import *
 import time
 from geopy.distance import geodesic
 import numpy as np
 from datetime import timedelta, datetime
-
+import os
 
 
 SHARE_LOC_REQUEST, SHARE_LOC, MAIN_MENU, NEXT_STEPS, SALON, SERVICE, SERVICE_GEO, MASTER, ENTER_DATE, TIME_SLOTS, REGISTER, ENTER_CONTACT_INFO, NAME, PAY, ORDERS = range(15)
+
+SBER_TOKEN = ''
+USERS_JSON = 'users_struct.json'
+
+with open(USERS_JSON, 'r') as file_users:
+    if os.stat(USERS_JSON).st_size:
+        USERS = json.load(file_users)
+    else:
+        USERS = {}
 
 def share_location(update: Update, context: CallbackContext) -> None:
 
@@ -43,7 +52,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
-    bot_config = load_json()
+    bot_config = load_json('config.json')
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
     all_masters = get_all_master_names(bot_config)
@@ -159,13 +168,21 @@ def main_submenu(update: Update, context: CallbackContext) -> None:
     return NEXT_STEPS
 
 def client_area(update: Update, context: CallbackContext) -> None:
+    user_id = str(update.effective_user.id)
+
+    if user_id in USERS:
+        message_text = f'Вы зарегистрированы как: {USERS[user_id]["name"]}\n' \
+                       f'Номер телефона: {USERS[user_id]["phone"]}'
+    else:
+        message_text = f'К сожалению вы не зарегистрированы в нашей системе'
+
     user_name = update.effective_user.username
     bot_users = load_json('USERS.json')
     orders = get_orders(bot_users, user_name)
     reply_markup = create_keyboard(orders)
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Вы можете повторить любой из предыдущих заказов:", reply_markup=reply_markup)
+    query.edit_message_text(text=message_text, reply_markup=reply_markup)
     return ORDERS
 
 def choose_order(update: Update, context: CallbackContext) -> None:
@@ -176,8 +193,6 @@ def choose_order(update: Update, context: CallbackContext) -> None:
     query.answer()
     query.edit_message_text(text="Вы заказывали массаж в Салоне на Павелецкой у мастера Ивановой:", reply_markup=reply_markup)
     return ENTER_DATE
-
-
 
 def choose_salon(update: Update, context: CallbackContext) -> None:
 
@@ -317,14 +332,19 @@ def enter_name(update, context: CallbackContext) -> None:
                               f"Салон: {context.user_data['salon']}\n"
                               f"Мастер: {context.user_data['master']}"
                               )
-    reply_markup = create_keyboard(['Оплатить'])
+
+    user_id = str(update.effective_user.id)
+
+    if user_id not in USERS:
+        USERS[user_id] = {
+            'name': name,
+            'phone': context.user_data['phone'],
+            'orders': []
+        }
+
+    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton('Оплатить', callback_data=0)]])
     update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
     return PAY
-
-def process_payment(update, context: CallbackContext) -> None:
-    query = update.callback_query
-    query.edit_message_text(text="Для оплаты перейдите по ссылке. Скоро она здесь появится")
-    return ConversationHandler.END
 
 
 def choose_contact_info(update, context: CallbackContext) -> None:
@@ -380,11 +400,54 @@ def find_closest_salon(config, salons, location):
 
     return salons[min_index]
 
+
+def process_payment(update, context: CallbackContext) -> None:
+    price = 500 * 100
+
+    context.bot.send_invoice(
+        chat_id=update.effective_chat.id,
+        title='Test donation',
+        description='Give money here.',
+        payload='test',
+        provider_token=SBER_TOKEN,
+        currency='RUB',
+        prices=[LabeledPrice('Give', price)],
+        need_name=False,
+    )
+
+
+def precheckout_callback(update: Update, context: CallbackContext) -> None:
+    query = update.pre_checkout_query
+    query.answer(ok=True)
+
+
+def successful_payment_callback(update: Update, context: CallbackContext) -> None:
+    print('FINAL')
+    user_id = str(update.effective_user.id)
+
+    USERS[user_id]['orders'].append(
+        {
+            "master": context.user_data.get('master'),
+            "service": context.user_data.get('service'),
+            "salon": context.user_data.get('salon'),
+            "date": context.user_data.get('date'),
+            "slot": context.user_data.get('slot'),
+        }
+    )
+
+    with open(USERS_JSON, 'w') as users_output:
+        json.dump(USERS, users_output)
+
+    update.message.reply_text("Спасибо за запись!")
+
+    return ConversationHandler.END
+
+
 def main() -> None:
     """Run the bot."""
     # Create the Updater and pass it your bot's token.
 
-    updater = Updater("5939603614:AAHQRADVt5SVleCzifGK3nUH1tyJeNfZ104")
+    updater = Updater("")
     #5837429177:AAGgLSWwHewJotuQRIyOTWGeEbjixF0DVNk
     #bot22test_bot
     #5939603614:AAHQRADVt5SVleCzifGK3nUH1tyJeNfZ104
@@ -400,19 +463,20 @@ def main() -> None:
             SHARE_LOC: [MessageHandler(Filters.location | Filters.regex('Нет'), get_location)],
             SERVICE_GEO: [CallbackQueryHandler(choose_service, pattern='0'), CallbackQueryHandler(main_submenu, pattern='1')],
             NEXT_STEPS: [CallbackQueryHandler(choose_salon, pattern='0'), CallbackQueryHandler(choose_service_first, pattern='1'), CallbackQueryHandler(choose_master_first, pattern='2')],
-            SALON: [CallbackQueryHandler(choose_salon, pattern='\d+')],
-            SERVICE: [CallbackQueryHandler(choose_service, pattern='\d+')],
-            MASTER: [CallbackQueryHandler(choose_master, pattern='\d+')],
-            ENTER_DATE: [CallbackQueryHandler(choose_date, pattern='\d+'), MessageHandler(Filters.text, enter_date)],
-            REGISTER: [CallbackQueryHandler(register_client, pattern='\d+')],
+            SALON: [CallbackQueryHandler(choose_salon, pattern=r'\d+')],
+            SERVICE: [CallbackQueryHandler(choose_service, pattern=r'\d+')],
+            MASTER: [CallbackQueryHandler(choose_master, pattern=r'\d+')],
+            ENTER_DATE: [CallbackQueryHandler(choose_date, pattern=r'\d+'), MessageHandler(Filters.text, enter_date)],
+            REGISTER: [CallbackQueryHandler(register_client, pattern=r'\d+')],
             ENTER_CONTACT_INFO: [MessageHandler(Filters.contact | Filters.text, enter_phone), CallbackQueryHandler(choose_contact_info, pattern='0'), CallbackQueryHandler(start, pattern='1')],
             NAME: [MessageHandler(Filters.text, enter_name)],
-            ORDERS: [CallbackQueryHandler(choose_order, pattern='\d+')],
-            PAY: [CallbackQueryHandler(process_payment, pattern='\d+')]
+            ORDERS: [CallbackQueryHandler(choose_order, pattern=r'\d+')],
+            PAY: [CallbackQueryHandler(process_payment, pattern=r'\d+'), MessageHandler(Filters.successful_payment, successful_payment_callback)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
+    dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     dispatcher.add_handler(conv_handler)
 
 
