@@ -447,7 +447,7 @@ def process_payment(update, context: CallbackContext) -> None:
     context.bot.send_invoice(
         chat_id=update.effective_chat.id,
         title=context.user_data.get('salon') or 'Салон красоты',
-        description='Оплата услуг',
+        description=f"Заказ {context.user_data['order_id']}, {context.user_data['salon']}, {context.user_data['service']}",
         payload='test',
         provider_token=SBER_TOKEN,
         currency='RUB',
