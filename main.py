@@ -363,7 +363,7 @@ def enter_name(update, context: CallbackContext) -> None:
     context.user_data.update({'client_name': name})
     context.user_data.update({'name': name})
     context.user_data.update({'order_id': context.user_data['last_order'] + len(
-        context.user_data['salon'] + context.user_data['service'] + context.user_data['master'])})
+        str(context.user_data['salon']) + str(context.user_data['service']) + str(context.user_data['master']))})
     update.message.reply_text(f"Номер заказа: {context.user_data['order_id']}\n"
                               f"Имя клиента: {name}\n"
                               f"Номер телефона: {context.user_data['phone']}\n"
