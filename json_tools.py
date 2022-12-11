@@ -5,6 +5,13 @@ def load_json(filename):
         json_data = json.load(f)
     return json_data
 
+def get_last_order(json_data):
+    orders = []
+    for user in json_data:
+        orders.append(max(get_orders(json_data, user)))
+    print(orders)
+    return max(orders)
+
 def get_orders(json_data, user_name):
     orders = []
     for order in json_data[user_name]['orders']:

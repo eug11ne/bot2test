@@ -19,11 +19,54 @@ with open(USERS_JSON, 'r', encoding='utf-8') as file_users:
     else:
         USERS = {}
 
+def start(update: Update, context: CallbackContext) -> None:
+
+    kbd = ['Записаться', 'Открыть личный кабинет']
+    reply_markup = create_keyboard(kbd)
+
+    bot_config = load_json('config.json')
+    bot_users = load_json('USERS.json')
+    user_name = update.effective_user.username
+    if user_name in bot_users:
+        client_name = bot_users[user_name]['full_name'],
+        phone = bot_users[user_name]['phone']
+        intro_message = f'Здраствуйте, {client_name}! Что вы хотели бы сделать?'
+    else:
+        client_name = None
+        phone = None
+        intro_message = 'Здраствуйте! Что вы хотели бы сделать?'
+
+    salons = get_salon_names(bot_config)
+    services = get_service_names(bot_config)
+    all_masters = get_all_master_names(bot_config)
+
+    context.user_data.update({'choose_salon_first': False,
+                              'choose_service_first': False,
+                              'choose_master_first': False,
+                              'reorder': False,
+                              'config': bot_config,
+                              'salons': salons,
+                              'services': services,
+                              'salon': None,
+                              'all_masters': all_masters,
+                              'last_order': get_last_order(bot_users),
+                              'client_name': client_name,
+                              'phone': phone}
+
+
+                            )
+
+    update.message.reply_text(intro_message,
+                              reply_markup=reply_markup)
+    return SHARE_LOC_REQUEST
+
+
 def share_location(update: Update, context: CallbackContext) -> None:
 
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
+    '''
     bot_config = load_json('config.json')
 
 
@@ -38,7 +81,10 @@ def share_location(update: Update, context: CallbackContext) -> None:
                               'config': bot_config,
                               'salons': salons,
                               'services': services,
-                              'all_masters': all_masters})
+                              'all_masters': all_masters,
+                              'salon': None,
+                              'last_order': 1111})
+'''
 
     chat_id = update.effective_chat.id
     keyboard = [[KeyboardButton('Да', request_location=True)], [KeyboardButton('Нет')]]
@@ -52,6 +98,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
+    '''
     bot_config = load_json('config.json')
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
@@ -68,7 +115,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
                               'salon': None,
                               'service': None,
                               'master': None})
-
+'''
     if update.message.location is not None:
         yes_no = ['Да', 'Нет']
         context.user_data.update({'location': [update.message.location['latitude'], update.message.location['longitude']]})
@@ -84,55 +131,11 @@ def get_location(update: Update, context: CallbackContext) -> None:
         context.user_data.update({'location': None})
 
     next_steps = ['Выбрать салон', 'Выбрать услугу', 'Выбрать мастера']
-    '''
-    user_id = update.effective_user.id
-    user_name = update.effective_user.username
-    print(f'user: {user_name}, {user_id}')
-    bot_config = load_json('config.json')    
-    salons = get_salon_names(bot_config)
-    services = get_service_names(bot_config)
-    all_masters = get_all_master_names(bot_config)
 
-    context.user_data.update({'choose_salon_first': False,
-                              'choose_service_first': False,
-                              'choose_master_first': False,
-                              'reorder': False,
-                              'config': bot_config,
-                              'salons': salons,
-                              'services': services,
-                              'all_masters': all_masters})
-'''
     reply_markup = create_keyboard(next_steps)
-
-    #query = update.callback_query
-    #query.answer()
-
-
     context.bot.send_message(chat_id=chat_id, text="Вы хотели бы:", reply_markup=reply_markup)
     return NEXT_STEPS
 
-def start(update: Update, context: CallbackContext) -> None:
-
-    kbd = ['Записаться', 'Открыть личный кабинет']
-    reply_markup = create_keyboard(kbd)
-
-    bot_config = load_json('config.json')
-    salons = get_salon_names(bot_config)
-    services = get_service_names(bot_config)
-    all_masters = get_all_master_names(bot_config)
-
-    context.user_data.update({'choose_salon_first': False,
-                              'choose_service_first': False,
-                              'choose_master_first': False,
-                              'reorder': False,
-                              'config': bot_config,
-                              'salons': salons,
-                              'services': services,
-                              'all_masters': all_masters})
-
-    update.message.reply_text('Здравствуйте! Что вы хотели бы сделать?',
-                              reply_markup=reply_markup)
-    return SHARE_LOC_REQUEST
 
 def cancel(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Попробуйте снова с помощью команды /start")
@@ -168,25 +171,31 @@ def main_submenu(update: Update, context: CallbackContext) -> None:
     return NEXT_STEPS
 
 def client_area(update: Update, context: CallbackContext) -> None:
-    user_id = str(update.effective_user.id)
+    bot_users = load_json('USERS.json')
+    user_name = update.effective_user.username
+    #user_id = str(update.effective_user.id)
 
-    if user_id in USERS:
-        message_text = f'Вы зарегистрированы как: {USERS[user_id]["name"]}\n' \
-                       f'Номер телефона: {USERS[user_id]["phone"]}'
+    if user_name in bot_users:
+        message_text = f"Вы зарегистрированы как: {bot_users[user_name]['full_name']}\n" \
+                       f"Номер телефона: {bot_users[user_name]['phone']}"
+        orders = get_orders(bot_users, user_name)
+        print('Max order: ', get_last_order(bot_users))
+        context.user_data.update({'orders': orders})
+        context.user_data.update({'user_name': user_name})
+        context.user_data.update({'users': bot_users})
+        reply_markup = create_keyboard(orders)
+        query = update.callback_query
+        query.answer()
+        query.edit_message_text(text=message_text, reply_markup=reply_markup)
+        return ORDERS
     else:
         message_text = f'К сожалению вы не зарегистрированы в нашей системе'
+        reply_markup = create_keyboard(['Назад'])
+        query = update.callback_query
+        query.answer()
+        query.edit_message_text(text=message_text, reply_markup=reply_markup)
+        return MAIN_MENU
 
-    user_name = update.effective_user.username
-    bot_users = load_json('USERS.json')
-    orders = get_orders(bot_users, user_name)
-    context.user_data.update({'orders': orders})
-    context.user_data.update({'user_name': user_name})
-    context.user_data.update({'users': bot_users})
-    reply_markup = create_keyboard(orders)
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text(text=message_text, reply_markup=reply_markup)
-    return ORDERS
 
 def choose_order(update: Update, context: CallbackContext) -> None:
     reorder = ['Заказать снова']
@@ -299,7 +308,7 @@ def enter_date(update, context: CallbackContext) -> None:
     reply_markup = create_keyboard(slots)
     context.user_data.update({'slots': slots})
     update.message.reply_text("Bыберите удобное время:", reply_markup=reply_markup)
-    if context.user_data['reorder']:
+    if context.user_data['reorder'] or context.user_data['client_name'] is not None:
         return PAY
     else:
         return REGISTER
@@ -440,11 +449,12 @@ def successful_payment_callback(update: Update, context: CallbackContext) -> Non
 
     USERS[user_id]['orders'].append(
         {
-            "master": context.user_data.get('master'),
-            "service": context.user_data.get('service'),
-            "salon": context.user_data.get('salon'),
-            "date": context.user_data.get('date'),
-            "slot": context.user_data.get('slot'),
+            "order_id": context.user_data['last_order'] + len(context.user_data['salon']+context.user_data['service']+context.user_data['master']),
+            "salon": context.user_data['salon'],
+            "service": context.user_data['service'],
+            "master": context.user_data['master']
+            #"date": context.user_data.get('date'),
+            #"slot": context.user_data.get('slot'),
         }
     )
 
