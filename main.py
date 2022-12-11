@@ -281,6 +281,7 @@ def choose_master(update: Update, context: CallbackContext) -> None:
 def choose_date(update: Update, context: CallbackContext) -> None:
 
     query = update.callback_query
+    chat_id = update.effective_chat.id
     if context.user_data['choose_salon_first'] or context.user_data['choose_service_first']:
         current_master = context.user_data['masters'][int(query.data)]
         context.user_data.update({'master': current_master})
@@ -289,7 +290,8 @@ def choose_date(update: Update, context: CallbackContext) -> None:
         context.user_data.update({'salon': current_salon})
 
     query.answer()
-    query.edit_message_text(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:")
+    #query.edit_message_text(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:")
+    context.bot.send_message(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:", chat_id=chat_id, reply_markup=ReplyKeyboardRemove())
 
 def enter_date(update, context: CallbackContext) -> None:
     date = update.message.text
