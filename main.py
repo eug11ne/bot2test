@@ -28,13 +28,13 @@ def start(update: Update, context: CallbackContext) -> None:
     bot_users = load_json('USERS.json')
     user_name = update.effective_user.username
     if user_name in bot_users:
-        client_name = bot_users[user_name]['full_name'],
+        client_name = bot_users[user_name]['full_name']
         phone = bot_users[user_name]['phone']
-        intro_message = f'Здраствуйте, {client_name}! Что вы хотели бы сделать?'
+        intro_message = f'Здравствуйте, {client_name}! Что вы хотели бы сделать?'
     else:
         client_name = None
         phone = None
-        intro_message = 'Здраствуйте! Что вы хотели бы сделать?'
+        intro_message = 'Здравствуйте! Что вы хотели бы сделать?'
 
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
