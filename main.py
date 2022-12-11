@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton, ReplyKeyboardMarkup, LabeledPrice
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton, ReplyKeyboardMarkup, LabeledPrice, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters, PreCheckoutQueryHandler
 from json_tools import *
 import time
@@ -30,11 +30,13 @@ def start(update: Update, context: CallbackContext) -> None:
     if user_name in bot_users:
         client_name = bot_users[user_name]['full_name']
         phone = bot_users[user_name]['phone']
-        intro_message = f'Здравствуйте, {client_name}! Что вы хотели бы сделать?'
+        intro_message = f'Здравствуйте, {client_name}! Что вы хотели бы сделать? (Для выхода введите /cancel).'
+        new_client = False
     else:
         client_name = None
         phone = None
-        intro_message = 'Здравствуйте! Что вы хотели бы сделать?'
+        intro_message = 'Здравствуйте! Этот бот поможет вам записаться в один из наших салонов. Что вы хотели бы сделать? (Для выхода введите /cancel).'
+        new_client = True
 
     salons = get_salon_names(bot_config)
     services = get_service_names(bot_config)
@@ -45,15 +47,16 @@ def start(update: Update, context: CallbackContext) -> None:
                               'choose_master_first': False,
                               'reorder': False,
                               'config': bot_config,
+                              'users': bot_users,
                               'salons': salons,
                               'services': services,
                               'salon': None,
                               'all_masters': all_masters,
                               'last_order': get_last_order(bot_users),
+                              'user_name': user_name,
                               'client_name': client_name,
-                              'phone': phone}
-
-
+                              'phone': phone,
+                              'new_client': new_client}
                             )
 
     update.message.reply_text(intro_message,
@@ -224,8 +227,12 @@ def choose_salon(update: Update, context: CallbackContext) -> None:
     query.edit_message_text(text=f"Выберите подходящий салон.", reply_markup=reply_markup)
 
     if context.user_data['choose_master_first']:
+        current_service = context.user_data['services'][int(query.data)]
+        context.user_data.update({'service': current_service})
         return ENTER_DATE
     elif context.user_data['choose_service_first']:
+        current_service = context.user_data['services'][int(query.data)]
+        context.user_data.update({'service': current_service})
         return MASTER
     else:
         context.user_data.update({'choose_salon_first': True})
@@ -259,6 +266,9 @@ def choose_master(update: Update, context: CallbackContext) -> None:
     if context.user_data['choose_service_first']:
         current_salon = context.user_data['salons'][int(query.data)]
         context.user_data.update({'salon': current_salon})
+    elif context.user_data['choose_salon_first']:
+        current_service = context.user_data['services'][int(query.data)]
+        context.user_data.update({'service': current_service})
 
     available_masters = get_master_names(context.user_data['config'], context.user_data['salon'])
     context.user_data.update({'masters': available_masters})
@@ -271,10 +281,10 @@ def choose_master(update: Update, context: CallbackContext) -> None:
 def choose_date(update: Update, context: CallbackContext) -> None:
 
     query = update.callback_query
-    if context.user_data['choose_salon_first']:
+    if context.user_data['choose_salon_first'] or context.user_data['choose_service_first']:
         current_master = context.user_data['masters'][int(query.data)]
         context.user_data.update({'master': current_master})
-    if context.user_data['choose_master_first']:
+    elif context.user_data['choose_master_first']:
         current_salon = context.user_data['salons'][int(query.data)]
         context.user_data.update({'salon': current_salon})
 
@@ -286,8 +296,11 @@ def enter_date(update, context: CallbackContext) -> None:
     try:
         valid_date = datetime.strptime(date, '%d.%m.%Y')
     except ValueError:
-        update.message.reply_text("Вы ввели неправильную дату. Попробуйте еще раз.")
-        return ENTER_DATE
+        if date == r'/cancel':
+            return ConversationHandler.END
+        else:
+            update.message.reply_text("Вы ввели неправильную дату. Попробуйте еще раз.")
+            return ENTER_DATE
     if valid_date < datetime.now():
         update.message.reply_text("Вы ввели дату в прошлом. Попробуйте еще раз.")
         return ENTER_DATE
@@ -309,6 +322,8 @@ def enter_date(update, context: CallbackContext) -> None:
     context.user_data.update({'slots': slots})
     update.message.reply_text("Bыберите удобное время:", reply_markup=reply_markup)
     if context.user_data['reorder'] or context.user_data['client_name'] is not None:
+        context.user_data.update({'order_id': context.user_data['last_order'] + len(
+            context.user_data['salon'] + context.user_data['service'] + context.user_data['master'])})
         return PAY
     else:
         return REGISTER
@@ -338,13 +353,16 @@ def enter_phone(update, context: CallbackContext) -> None:
         phone = update.message.text
     context.user_data.update({'phone': phone})
     update.message.reply_text(phone)
-    update.message.reply_text("Введите ваше имя:")
+    update.message.reply_text("Введите ваше имя:", reply_markup=ReplyKeyboardRemove())
     return NAME
 
 def enter_name(update, context: CallbackContext) -> None:
     name = update.message.text
+    context.user_data.update({'client_name': name})
     context.user_data.update({'name': name})
-    update.message.reply_text(f"Номер заказа: 1222344\n"
+    context.user_data.update({'order_id': context.user_data['last_order'] + len(
+        context.user_data['salon'] + context.user_data['service'] + context.user_data['master'])})
+    update.message.reply_text(f"Номер заказа: {context.user_data['order_id']}\n"
                               f"Имя клиента: {name}\n"
                               f"Номер телефона: {context.user_data['phone']}\n"
                               f"Дата: {context.user_data['date']}\n"
@@ -352,19 +370,21 @@ def enter_name(update, context: CallbackContext) -> None:
                               f"Салон: {context.user_data['salon']}\n"
                               f"Мастер: {context.user_data['master']}"
                               )
+    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton('Оплатить', callback_data=0)]])
+    update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
+    return PAY
+    #user_id = str(update.effective_user.id)
 
-    user_id = str(update.effective_user.id)
-
+'''
     if user_id not in USERS:
         USERS[user_id] = {
             'name': name,
             'phone': context.user_data['phone'],
             'orders': []
         }
+'''
 
-    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton('Оплатить', callback_data=0)]])
-    update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
-    return PAY
+
 
 
 def choose_contact_info(update, context: CallbackContext) -> None:
@@ -445,7 +465,24 @@ def precheckout_callback(update: Update, context: CallbackContext) -> None:
 
 def successful_payment_callback(update: Update, context: CallbackContext) -> None:
     print('FINAL')
-    user_id = str(update.effective_user.id)
+
+    #user_id = str(update.effective_user.id)
+    if context.user_data['new_client']:
+        users = create_user(context.user_data['users'], context.user_data['user_name'], context.user_data['client_name'], context.user_data['phone'])
+        users = add_order(users, context.user_data['user_name'], context.user_data['order_id'], context.user_data['salon'], context.user_data['service'], context.user_data['master'])
+    else:
+        users = add_order(context.user_data['users'], context.user_data['user_name'], context.user_data['order_id'],
+                          context.user_data['salon'], context.user_data['service'], context.user_data['master'])
+
+    with open('USERS.json', 'w', encoding='utf-8') as users_output:
+        json.dump(users, users_output, indent=4, ensure_ascii=False)
+    context.user_data.update({'last_order': context.user_data['order_id']})
+
+    update.message.reply_text("Спасибо за запись!")
+
+    return ConversationHandler.END
+
+'''
 
     USERS[user_id]['orders'].append(
         {
@@ -460,10 +497,9 @@ def successful_payment_callback(update: Update, context: CallbackContext) -> Non
 
     with open(USERS_JSON, 'w', encoding='utf-8') as users_output:
         json.dump(USERS, users_output, indent=4, ensure_ascii=False)
+        '''
 
-    update.message.reply_text("Спасибо за запись!")
 
-    return ConversationHandler.END
 
 
 def main() -> None:

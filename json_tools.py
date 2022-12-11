@@ -5,6 +5,25 @@ def load_json(filename):
         json_data = json.load(f)
     return json_data
 
+def create_user(users, user_name, name, phone):
+    users.update({user_name: {
+        'full_name': name,
+        'phone': phone,
+        'orders': []
+    }
+    })
+    return users
+
+def add_order(users_config, user_name, order_num, salon, service, master):
+    users_config[user_name]['orders'].append(
+        {
+            'order_id': order_num,
+            'salon': salon,
+            'service': service,
+            'master': master
+        })
+    return users_config
+
 def get_last_order(json_data):
     orders = []
     for user in json_data:
