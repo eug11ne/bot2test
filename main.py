@@ -1,7 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, KeyboardButton, ReplyKeyboardMarkup, LabeledPrice, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, ConversationHandler, MessageHandler, Filters, PreCheckoutQueryHandler
 from json_tools import *
-import time
 from geopy.distance import geodesic
 import numpy as np
 from datetime import timedelta, datetime
@@ -69,25 +68,6 @@ def share_location(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
-    '''
-    bot_config = load_json('config.json')
-
-
-    salons = get_salon_names(bot_config)
-    services = get_service_names(bot_config)
-    all_masters = get_all_master_names(bot_config)
-
-    context.user_data.update({'choose_salon_first': False,
-                              'choose_service_first': False,
-                              'choose_master_first': False,
-                              'reorder': False,
-                              'config': bot_config,
-                              'salons': salons,
-                              'services': services,
-                              'all_masters': all_masters,
-                              'salon': None,
-                              'last_order': 1111})
-'''
 
     chat_id = update.effective_chat.id
     keyboard = [[KeyboardButton('Да', request_location=True)], [KeyboardButton('Нет')]]
@@ -101,24 +81,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.username
     print(f'user: {user_name}, {user_id}')
-    '''
-    bot_config = load_json('config.json')
-    salons = get_salon_names(bot_config)
-    services = get_service_names(bot_config)
-    all_masters = get_all_master_names(bot_config)
 
-    context.user_data.update({'choose_salon_first': False,
-                              'choose_service_first': False,
-                              'choose_master_first': False,
-                              'reorder': False,
-                              'config': bot_config,
-                              'salons': salons,
-                              'services': services,
-                              'all_masters': all_masters,
-                              'salon': None,
-                              'service': None,
-                              'master': None})
-'''
     if update.message.location is not None:
         yes_no = ['Да', 'Нет']
         context.user_data.update({'location': [update.message.location['latitude'], update.message.location['longitude']]})
@@ -376,18 +339,6 @@ def enter_name(update, context: CallbackContext) -> None:
     update.message.reply_text("Осталось оплатить заказ:", reply_markup=reply_markup)
     return PAY
     #user_id = str(update.effective_user.id)
-
-'''
-    if user_id not in USERS:
-        USERS[user_id] = {
-            'name': name,
-            'phone': context.user_data['phone'],
-            'orders': []
-        }
-'''
-
-
-
 
 def choose_contact_info(update, context: CallbackContext) -> None:
     #context.bot.delete_message(update.effective_chat.id, context.user_data['pdf_message_id'])
