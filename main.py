@@ -104,7 +104,7 @@ def get_location(update: Update, context: CallbackContext) -> None:
 
 
 def cancel(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Попробуйте снова с помощью команды /start")
+    update.message.reply_text("Попробуйте снова с помощью команды /start", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
@@ -480,7 +480,7 @@ def main() -> None:
             MASTER: [CallbackQueryHandler(choose_master, pattern=r'\d+')],
             ENTER_DATE: [CallbackQueryHandler(choose_date, pattern=r'\d+'), MessageHandler(Filters.text, enter_date)],
             REGISTER: [CallbackQueryHandler(register_client, pattern=r'\d+')],
-            ENTER_CONTACT_INFO: [MessageHandler(Filters.contact | Filters.text, enter_phone), CallbackQueryHandler(choose_contact_info, pattern='0'), CallbackQueryHandler(start, pattern='1')],
+            ENTER_CONTACT_INFO: [MessageHandler(Filters.contact | Filters.text, enter_phone), CallbackQueryHandler(choose_contact_info, pattern='0'), CallbackQueryHandler(main_submenu, pattern='1')],
             NAME: [MessageHandler(Filters.text, enter_name)],
             ORDERS: [CallbackQueryHandler(choose_order, pattern=r'\d+')],
             PAY: [CallbackQueryHandler(process_payment, pattern=r'\d+'), MessageHandler(Filters.successful_payment, successful_payment_callback)]
