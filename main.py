@@ -290,8 +290,8 @@ def choose_date(update: Update, context: CallbackContext) -> None:
         context.user_data.update({'salon': current_salon})
 
     query.answer()
-    #query.edit_message_text(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:")
-    context.bot.send_message(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:", chat_id=chat_id, reply_markup=ReplyKeyboardRemove())
+    query.edit_message_text(text="Введите подходящую дату в формате ДД.ММ.ГГГГ:")
+
 
 def enter_date(update, context: CallbackContext) -> None:
     date = update.message.text
@@ -480,7 +480,7 @@ def successful_payment_callback(update: Update, context: CallbackContext) -> Non
         json.dump(users, users_output, indent=4, ensure_ascii=False)
     context.user_data.update({'last_order': context.user_data['order_id']})
 
-    update.message.reply_text("Спасибо за запись!")
+    update.message.reply_text("Спасибо за запись!", reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
